@@ -15,7 +15,9 @@ Build real AI systems in seconds using vibe coding.
 
 ## 🔥 Prompts
 
-(coming soon)
+🧠 1. Customer Support Voice Agent
+Prompt → prompts/customer-support-voice.vibe
+Docs → docs/customer-support-voice.md
 
 ---
 
