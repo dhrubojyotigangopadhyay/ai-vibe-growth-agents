@@ -1,0 +1,139 @@
+You are a senior engineer. Build this project exactly.
+
+STRICT RULES:
+- Do not change API provider
+- Do not change model
+- Do not change framework
+- Do not skip files
+- No placeholder code
+- Must fully work end-to-end
+
+-------------------------------------
+
+PROJECT: Customer Support Voice Agent
+
+-------------------------------------
+
+PROJECT STRUCTURE:
+
+customer_support_voice_agent/
+│
+├── main.py
+├── agent.py
+├── audio_utils.py
+├── requirements.txt
+├── .env.example
+└── README.md
+
+-------------------------------------
+
+ENV VARIABLES (.env.example):
+
+OPENAI_API_KEY=
+
+-------------------------------------
+
+REQUIREMENTS (requirements.txt):
+
+openai
+sounddevice
+scipy
+numpy
+
+-------------------------------------
+
+FILE: audio_utils.py
+
+import sounddevice as sd
+import numpy as np
+from scipy.io.wavfile import write
+
+def record_audio(duration=5, fs=44100):
+    print("Recording...")
+    recording = sd.rec(int(duration * fs), samplerate=fs, channels=1)
+    sd.wait()
+    print("Recording complete.")
+    return recording, fs
+
+def save_audio(filename, data, fs):
+    write(filename, fs, data)
+
+-------------------------------------
+
+FILE: agent.py
+
+import os
+from openai import OpenAI
+
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+SYSTEM_PROMPT = """
+You are a helpful customer support voice agent.
+Answer politely and concisely.
+"""
+
+def get_response(text):
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": text}
+        ]
+    )
+    return response.choices[0].message.content
+
+-------------------------------------
+
+FILE: main.py
+
+import os
+from audio_utils import record_audio, save_audio
+from agent import get_response
+from openai import OpenAI
+
+def ensure_api_key():
+    if not os.getenv("OPENAI_API_KEY"):
+        key = input("Enter your OpenAI API Key: ")
+        os.environ["OPENAI_API_KEY"] = key
+
+def transcribe_audio(file_path):
+    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    with open(file_path, "rb") as f:
+        transcript = client.audio.transcriptions.create(
+            model="whisper-1",
+            file=f
+        )
+    return transcript.text
+
+def text_to_speech(text, output_file="response.mp3"):
+    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    speech = client.audio.speech.create(
+        model="gpt-4o-mini-tts",
+        voice="alloy",
+        input=text
+    )
+    with open(output_file, "wb") as f:
+        f.write(speech.read())
+
+def main():
+    ensure_api_key()
+
+    audio_data, fs = record_audio()
+    save_audio("input.wav", audio_data, fs)
+
+    user_text = transcribe_audio("input.wav")
+    print("User:", user_text)
+
+    response = get_response(user_text)
+    print("Agent:", response)
+
+    text_to_speech(response)
+
+if __name__ == "__main__":
+    main()
+
+-------------------------------------
+
+EXECUTION:
+
+python main.py
