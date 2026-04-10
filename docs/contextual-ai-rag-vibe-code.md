@@ -87,6 +87,9 @@ python main.py
 
 rag, openai, faiss, embeddings, llm, question-answering
 
+<img width="1024" height="559" alt="image" src="https://github.com/user-attachments/assets/238c02ae-b483-4a68-bdd2-1564cb013bb0" />
+
+
 
 
 
