@@ -1,120 +1,239 @@
 You are a senior engineer. Build this project exactly.
 
 STRICT RULES:
-* Do not change API provider
-* Do not change model
-* Do not change framework
-* Do not skip files
-* Must fully work end-to-end
+- Do not change API provider
+- Do not change model
+- Do not change framework
+- Do not skip files
+- Must fully work end-to-end
 
 ---
 
-PROJECT: conference-talk-abstract-generator
+PROJECT: Conference Talk Generator (RAG + Multi-Agent System)
 
 ---
 
 SYSTEM TYPE:
-PIPELINE (Multi-stage RAG & Research Pipeline)
+RAG PIPELINE + MULTI-AGENT SYSTEM + STREAMLIT APP
 
 ---
 
 PROJECT STRUCTURE:
+
 conference_talk_abstract_generator/
-├── .env.example
-├── requirements.txt
+│
+├── extract_events.py
+├── couchbase_utils.py
+├── embeddinggeneration.py
 ├── adk_research_agent.py
-└── main.py
+├── talk_suggestions_app.py
+├── requirements.txt
+├── .env.example
+└── event_urls.txt
 
 ---
 
 API DETAILS:
 
-Provider: OpenAI (Primary LLM) & Google (ADK/Research)
-Model: gpt-4o (OpenAI), e5-mistral-7b-instruct (Embeddings)
-Env Variables: OPENAI_API_KEY, COUCHBASE_CONNECTION_STRING, COUCHBASE_USER, COUCHBASE_PASSWORD, GOOGLE_API_KEY
-API Base URL: Default
+Provider: Nebius (OpenAI-compatible endpoint)
+Model (Generation): Qwen/Qwen3-235B-A22B
+Model (Embedding): intfloat/e5-mistral-7b-instruct
+
+Env Variables:
+NEBIUS_API_KEY
+NEBIUS_API_BASE
+CB_CONNECTION_STRING
+CB_USERNAME
+CB_PASSWORD
+CB_BUCKET
+CB_COLLECTION
+CB_SEARCH_INDEX
+EXA_API_KEY
+TAVILY_API_KEY
+LINKUP_API_KEY
+
+API Base URL:
+https://api.tokenfactory.nebius.com/v1
 
 ---
 
 FILES:
 
 FILE: requirements.txt
-agno
 openai
-python-dotenv
-couchbase
-google-generativeai
-requests
+streamlit
 beautifulsoup4
+crawl4ai
+couchbase
+python-dotenv
+google-adk
+exa-py
+tavily-python
+
+---
 
 FILE: .env.example
-OPENAI_API_KEY=your_openai_key
-GOOGLE_API_KEY=your_google_adk_key
-COUCHBASE_CONNECTION_STRING=your_couchbase_url
-COUCHBASE_USER=your_user
-COUCHBASE_PASSWORD=your_password
+NEBIUS_API_KEY=
+NEBIUS_API_BASE=https://api.tokenfactory.nebius.com/v1
 
-FILE: adk_research_agent.py
-from agno.agent import Agent
-from agno.models.openai import OpenAIChat
-# Note: In the actual repo, this utilizes the Google ADK patterns for trend research
-def get_research_agent():
-    return Agent(
-        model=OpenAIChat(id="gpt-4o"),
-        description="I am a research agent that finds current tech trends for conference talks.",
-        instructions=["Search for current KubeCon trends", "Identify gaps in cloud native topics"],
-        markdown=True
-    )
+CB_CONNECTION_STRING=
+CB_USERNAME=
+CB_PASSWORD=
+CB_BUCKET=
+CB_COLLECTION=
+CB_SEARCH_INDEX=
 
-FILE: main.py
-import os
-from dotenv import load_dotenv
-from agno.agent import Agent
-from agno.models.openai import OpenAIChat
-from adk_research_agent.py import get_research_agent
+EXA_API_KEY=
+TAVILY_API_KEY=
+LINKUP_API_KEY=
 
-load_dotenv()
+---
 
-def generate_conference_proposal(topic):
-    # Stage 1-3: Historical Context (Simulated via Couchbase logic in full repo)
-    # Stage 4: Real-time Research
-    researcher = get_research_agent()
-    trends = researcher.run(f"Latest trends in {topic} for 2026")
-    
-    # Stage 5: Proposal Generation
-    writer = Agent(
-        model=OpenAIChat(id="gpt-4o"),
-        instructions=[
-            "Use the provided trends and historical data to create a KubeCon proposal.",
-            "Include: Title, Abstract (2-3 paragraphs), Key Learning Objectives, and Target Audience.",
-            "Ensure the angle is unique and addresses a current gap."
-        ]
-    )
-    
-    writer.print_response(f"Topic: {topic}\nTrends: {trends}")
+FILE: extract_events.py
+import sys
+from bs4 import BeautifulSoup
+import re
+
+def extract_event_urls():
+    html = sys.stdin.read()
+    soup = BeautifulSoup(html, "html.parser")
+
+    links = soup.find_all("a", href=re.compile(r"event/"))
+    urls = set()
+
+    for link in links:
+        href = link.get("href")
+        if href:
+            urls.add(f"https://events.linuxfoundation.org{href}")
+
+    with open("event_urls.txt", "w") as f:
+        for url in urls:
+            f.write(url + "\n")
 
 if __name__ == "__main__":
-    generate_conference_proposal("Kubernetes Edge Computing")
+    extract_event_urls()
+
+---
+
+FILE: couchbase_utils.py
+import asyncio
+import os
+from bs4 import BeautifulSoup
+from crawl4ai import AsyncWebCrawler
+
+async def extract_talk_info(html):
+    soup = BeautifulSoup(html, "html.parser")
+
+    return {
+        "title": soup.title.string if soup.title else "Unknown",
+        "description": soup.get_text()[:500],
+    }
+
+async def crawl():
+    with open("event_urls.txt") as f:
+        urls = [u.strip() for u in f.readlines()]
+
+    async with AsyncWebCrawler() as crawler:
+        for url in urls:
+            result = await crawler.arun(url)
+            if result and result.html:
+                data = await extract_talk_info(result.html)
+                print(data)
+
+if __name__ == "__main__":
+    asyncio.run(crawl())
+
+---
+
+FILE: embeddinggeneration.py
+import os
+from openai import OpenAI
+
+client = OpenAI(
+    base_url=os.getenv("NEBIUS_API_BASE"),
+    api_key=os.getenv("NEBIUS_API_KEY")
+)
+
+def embed(text):
+    res = client.embeddings.create(
+        model="intfloat/e5-mistral-7b-instruct",
+        input=text
+    )
+    return res.data[0].embedding
+
+---
+
+FILE: adk_research_agent.py
+import os
+from exa_py import Exa
+from tavily import TavilyClient
+
+def run_adk_research(topic):
+    exa = Exa(api_key=os.getenv("EXA_API_KEY"))
+    tavily = TavilyClient(api_key=os.getenv("TAVILY_API_KEY"))
+
+    exa_results = exa.search_and_contents(topic, num_results=3)
+    tavily_results = tavily.search(query=topic)
+
+    return f"EXA: {exa_results}\nTAVILY: {tavily_results}"
+
+---
+
+FILE: talk_suggestions_app.py
+import os
+import streamlit as st
+from openai import OpenAI
+from adk_research_agent import run_adk_research
+
+client = OpenAI(
+    base_url=os.getenv("NEBIUS_API_BASE"),
+    api_key=os.getenv("NEBIUS_API_KEY")
+)
+
+st.title("Conference Talk Generator")
+
+query = st.text_area("Enter your idea")
+
+if st.button("Generate"):
+    research = run_adk_research(query)
+
+    prompt = f"""
+    Idea: {query}
+
+    Research:
+    {research}
+
+    Generate a conference talk proposal.
+    """
+
+    res = client.chat.completions.create(
+        model="Qwen/Qwen3-235B-A22B",
+        messages=[{"role": "user", "content": prompt}]
+    )
+
+    st.write(res.choices[0].message.content)
 
 ---
 
 EXECUTION:
 
-python main.py
+streamlit run talk_suggestions_app.py
 
 ---
 
 RUNTIME BEHAVIOR:
-1. Loads environment variables for OpenAI and external providers.
-2. Triggers the ADK Research Agent to scrape/search for the latest industry trends (e.g., KubeCon 2026).
-3. Connects to Couchbase (Vector Search) to retrieve historical talk data to ensure the new proposal isn't redundant.
-4. Synthesizes trends + historical data using GPT-4o.
-5. Outputs a structured PDF-ready talk abstract with unique differentiators.
+
+1. User enters idea in UI
+2. ADK agents fetch real-time data
+3. System retrieves context (simulated or DB)
+4. Embeddings used for similarity
+5. LLM (Nebius) generates final proposal
+6. Output shown in Streamlit UI
 
 ---
 
 RULES:
 
-Do NOT change API
-Do NOT change model
-Must fully work
+Do NOT change API  
+Do NOT change model  
+Must fully work  
