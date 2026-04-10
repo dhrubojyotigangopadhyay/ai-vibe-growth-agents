@@ -18,7 +18,10 @@ Build real AI systems in seconds using vibe coding.
 1. 🧠 Customer Support Voice Agent
 - Prompt → [View Prompt](prompts/customer-support-voice.vibe)  
 - Docs → [Read Docs](docs/customer-support-voice.md)
-
+  
+2. 🧠 contextual-ai-rag-vibe-code
+- Prompt → [View Prompt](prompts/ccontextual-ai-rag-vibe-code.vibe)  
+- Docs → [Read Docs](docs/contextual-ai-rag-vibe-code.md)
 ---
 
 ## 💡 What This Repo Is
