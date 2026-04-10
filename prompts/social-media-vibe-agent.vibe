@@ -1,0 +1,155 @@
+You are a senior engineer. Build this project exactly.
+
+STRICT RULES:
+- Do not change API provider
+- Do not change model
+- Do not change framework
+- Do not skip files
+- Must fully work end-to-end
+
+---
+
+PROJECT: Social Media Agent with Memory
+
+---
+
+SYSTEM TYPE:
+AGENT WITH MEMORY + CONTENT GENERATION + STYLE LEARNING
+
+---
+
+PROJECT STRUCTURE:
+
+social_media_agent/
+│
+├── main.py
+├── requirements.txt
+├── .env.example
+└── README.md
+
+---
+
+API DETAILS:
+
+Provider: Nebius (via Agno)
+Model: deepseek-ai/DeepSeek-V3-0324  
+Env Variable: NEBIUS_API_KEY  
+
+---
+
+FILES:
+
+FILE: requirements.txt
+agno
+python-dotenv
+
+---
+
+FILE: .env.example
+NEBIUS_API_KEY=your_api_key_here
+
+---
+
+FILE: main.py
+import os
+from dotenv import load_dotenv
+
+from agno.agent import Agent
+from agno.models.nebius import Nebius
+from agno.memory.v2.memory import Memory
+from agno.memory.v2.db.sqlite import SqliteMemoryDb
+from agno.storage.sqlite import SqliteStorage
+
+load_dotenv()
+
+api_key = os.getenv("NEBIUS_API_KEY")
+
+if not api_key:
+    api_key = input("Enter your NEBIUS API Key: ").strip()
+    os.environ["NEBIUS_API_KEY"] = api_key
+
+db_file = "tmp/social_agent.db"
+
+# Memory system (stores writing style & past posts)
+memory = Memory(
+    model=Nebius(
+        id="deepseek-ai/DeepSeek-V3-0324",
+        api_key=os.getenv("NEBIUS_API_KEY")
+    ),
+    db=SqliteMemoryDb(
+        table_name="social_memory",
+        db_file=db_file
+    ),
+)
+
+# Chat history storage
+storage = SqliteStorage(
+    table_name="sessions",
+    db_file=db_file
+)
+
+INSTRUCTIONS = """
+You are a Social Media AI Agent.
+
+Your job:
+- Learn user's writing style
+- Store previous posts
+- Generate new content in same tone
+
+You can:
+- Write tweets
+- Write LinkedIn posts
+- Repurpose content
+- Maintain brand voice
+
+Always adapt tone based on memory.
+"""
+
+agent = Agent(
+    model=Nebius(
+        id="deepseek-ai/DeepSeek-V3-0324",
+        api_key=os.getenv("NEBIUS_API_KEY")
+    ),
+    instructions=[INSTRUCTIONS],
+    memory=memory,
+    enable_agentic_memory=True,
+    enable_user_memories=True,
+    storage=storage,
+    add_history_to_messages=True,
+    num_history_runs=3,
+    markdown=True,
+)
+
+print("\n📱 Social Media Agent Ready (type 'exit' to quit)\n")
+
+while True:
+    user_input = input("You: ").strip()
+
+    if user_input.lower() == "exit":
+        break
+
+    agent.print_response(user_input)
+
+---
+
+EXECUTION:
+
+python main.py
+
+---
+
+RUNTIME BEHAVIOR:
+
+- User inputs social media ideas or past posts  
+- Agent stores them in memory  
+- Learns tone and style over time  
+- Generates new posts in same voice  
+- Maintains consistency across sessions  
+
+---
+
+RULES:
+
+Do NOT change API  
+Do NOT change model  
+Must fully work  
