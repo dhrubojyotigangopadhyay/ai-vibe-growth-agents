@@ -20,9 +20,8 @@ Build real AI systems in seconds using vibe coding.
 - Docs → [Read Docs](docs/customer-support-voice.md)
   
 2. 🧠 contextual-ai-rag-vibe-code
-- Prompt → [View Prompt](prompts/ccontextual-ai-rag-vibe-code.vibe)  
+- Prompt → [View Prompt](prompts/contextual-ai-rag-vibe-code.vibe)  
 - Docs → [Read Docs](docs/contextual-ai-rag-vibe-code.md)
----
 
 ## 💡 What This Repo Is
 
