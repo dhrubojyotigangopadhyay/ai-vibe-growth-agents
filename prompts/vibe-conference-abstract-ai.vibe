@@ -1,0 +1,120 @@
+You are a senior engineer. Build this project exactly.
+
+STRICT RULES:
+* Do not change API provider
+* Do not change model
+* Do not change framework
+* Do not skip files
+* Must fully work end-to-end
+
+---
+
+PROJECT: conference-talk-abstract-generator
+
+---
+
+SYSTEM TYPE:
+PIPELINE (Multi-stage RAG & Research Pipeline)
+
+---
+
+PROJECT STRUCTURE:
+conference_talk_abstract_generator/
+├── .env.example
+├── requirements.txt
+├── adk_research_agent.py
+└── main.py
+
+---
+
+API DETAILS:
+
+Provider: OpenAI (Primary LLM) & Google (ADK/Research)
+Model: gpt-4o (OpenAI), e5-mistral-7b-instruct (Embeddings)
+Env Variables: OPENAI_API_KEY, COUCHBASE_CONNECTION_STRING, COUCHBASE_USER, COUCHBASE_PASSWORD, GOOGLE_API_KEY
+API Base URL: Default
+
+---
+
+FILES:
+
+FILE: requirements.txt
+agno
+openai
+python-dotenv
+couchbase
+google-generativeai
+requests
+beautifulsoup4
+
+FILE: .env.example
+OPENAI_API_KEY=your_openai_key
+GOOGLE_API_KEY=your_google_adk_key
+COUCHBASE_CONNECTION_STRING=your_couchbase_url
+COUCHBASE_USER=your_user
+COUCHBASE_PASSWORD=your_password
+
+FILE: adk_research_agent.py
+from agno.agent import Agent
+from agno.models.openai import OpenAIChat
+# Note: In the actual repo, this utilizes the Google ADK patterns for trend research
+def get_research_agent():
+    return Agent(
+        model=OpenAIChat(id="gpt-4o"),
+        description="I am a research agent that finds current tech trends for conference talks.",
+        instructions=["Search for current KubeCon trends", "Identify gaps in cloud native topics"],
+        markdown=True
+    )
+
+FILE: main.py
+import os
+from dotenv import load_dotenv
+from agno.agent import Agent
+from agno.models.openai import OpenAIChat
+from adk_research_agent.py import get_research_agent
+
+load_dotenv()
+
+def generate_conference_proposal(topic):
+    # Stage 1-3: Historical Context (Simulated via Couchbase logic in full repo)
+    # Stage 4: Real-time Research
+    researcher = get_research_agent()
+    trends = researcher.run(f"Latest trends in {topic} for 2026")
+    
+    # Stage 5: Proposal Generation
+    writer = Agent(
+        model=OpenAIChat(id="gpt-4o"),
+        instructions=[
+            "Use the provided trends and historical data to create a KubeCon proposal.",
+            "Include: Title, Abstract (2-3 paragraphs), Key Learning Objectives, and Target Audience.",
+            "Ensure the angle is unique and addresses a current gap."
+        ]
+    )
+    
+    writer.print_response(f"Topic: {topic}\nTrends: {trends}")
+
+if __name__ == "__main__":
+    generate_conference_proposal("Kubernetes Edge Computing")
+
+---
+
+EXECUTION:
+
+python main.py
+
+---
+
+RUNTIME BEHAVIOR:
+1. Loads environment variables for OpenAI and external providers.
+2. Triggers the ADK Research Agent to scrape/search for the latest industry trends (e.g., KubeCon 2026).
+3. Connects to Couchbase (Vector Search) to retrieve historical talk data to ensure the new proposal isn't redundant.
+4. Synthesizes trends + historical data using GPT-4o.
+5. Outputs a structured PDF-ready talk abstract with unique differentiators.
+
+---
+
+RULES:
+
+Do NOT change API
+Do NOT change model
+Must fully work
